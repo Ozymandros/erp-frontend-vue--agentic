@@ -161,22 +161,22 @@ async function handleDelete() {
 }
 
 function copyDefaultsFromProvider(providerId: string) {
-  const providerModel = models.value.find((model) => model.providerId === providerId)
-  if (!providerModel) {
+  const provider = providers.value.find((item) => item.id === providerId)
+  if (!provider) {
     applyDefaultConfiguration(createBaseModelDefaults())
     return
   }
 
   applyDefaultConfiguration({
-    defaultTemperature: providerModel.defaultTemperature,
-    defaultTopK: providerModel.defaultTopK,
-    defaultMaxTokens: providerModel.defaultMaxTokens,
-    defaultEmbeddingDimensions: providerModel.defaultEmbeddingDimensions,
-    defaultEnableMemory: providerModel.defaultEnableMemory,
-    defaultEnableRAG: providerModel.defaultEnableRAG,
-    defaultEmbeddingModelName: providerModel.defaultEmbeddingModelName ?? '',
-    defaultBotType: providerModel.defaultBotType,
-    defaultSystemPrompt: providerModel.defaultSystemPrompt ?? '',
+    defaultTemperature: provider.defaultTemperature,
+    defaultTopK: provider.defaultTopK,
+    defaultMaxTokens: provider.defaultMaxTokens,
+    defaultEmbeddingDimensions: provider.defaultEmbeddingDimensions,
+    defaultEnableMemory: provider.defaultEnableMemory,
+    defaultEnableRAG: provider.defaultEnableRAG,
+    defaultEmbeddingModelName: provider.defaultEmbeddingModelName ?? '',
+    defaultBotType: provider.defaultBotType,
+    defaultSystemPrompt: provider.defaultSystemPrompt ?? '',
   })
 }
 

@@ -72,18 +72,45 @@ export interface AIProviderDto {
   name: string
   baseUrl: string
   secretKeyName: string
+  defaultTemperature: number
+  defaultTopK: number
+  defaultMaxTokens: number
+  defaultEmbeddingDimensions: number
+  defaultEnableMemory: boolean
+  defaultEnableRAG: boolean
+  defaultEmbeddingModelName: string | null
+  defaultBotType: BotType
+  defaultSystemPrompt: string | null
 }
 
 export interface CreateAIProviderDto {
   name: string
   baseUrl: string
   secretKeyName: string
+  defaultTemperature?: number
+  defaultTopK?: number
+  defaultMaxTokens?: number
+  defaultEmbeddingDimensions?: number
+  defaultEnableMemory?: boolean
+  defaultEnableRAG?: boolean
+  defaultEmbeddingModelName?: string | null
+  defaultBotType?: BotType
+  defaultSystemPrompt?: string | null
 }
 
 export interface UpdateAIProviderDto {
   name: string
   baseUrl: string
   secretKeyName: string
+  defaultTemperature?: number
+  defaultTopK?: number
+  defaultMaxTokens?: number
+  defaultEmbeddingDimensions?: number
+  defaultEnableMemory?: boolean
+  defaultEnableRAG?: boolean
+  defaultEmbeddingModelName?: string | null
+  defaultBotType?: BotType
+  defaultSystemPrompt?: string | null
 }
 
 export interface AIModelDto {

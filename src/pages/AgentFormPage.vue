@@ -92,6 +92,7 @@ async function handleSubmit() {
     const payload = {
       name: data.name || '',
       description: data.description || '',
+      providerId: data.providerId || '',
       modelId: data.modelId || '',
       temperature: data.temperature ?? 0.7,
       systemPrompt: data.systemPrompt || '',
