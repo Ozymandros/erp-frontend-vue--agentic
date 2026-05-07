@@ -1,11 +1,15 @@
 import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from 'axios'
 
-const getApiBaseUrl = () => {
-  return import.meta.env.VITE_API_BASE_URL || 'https://localhost:5000'
+const getApiOrigin = () => {
+  return import.meta.env.VITE_API_ORIGIN || 'http://localhost:5000'
 }
 
-const getAgenticApiUrl = () => {
-  return import.meta.env.VITE_AGENTIC_API_URL || 'http://localhost:6008'
+const getAuthApiBaseUrl = () => {
+  return import.meta.env.VITE_AUTH_API_BASE_URL || `${getApiOrigin()}/auth`
+}
+
+const getAgenticApiBaseUrl = () => {
+  return import.meta.env.VITE_AGENTIC_API_BASE_URL || `${getApiOrigin()}/agentic`
 }
 
 class ApiClient {
@@ -14,12 +18,12 @@ class ApiClient {
 
   constructor() {
     this.authClient = axios.create({
-      baseURL: getApiBaseUrl(),
+      baseURL: getAuthApiBaseUrl(),
       headers: { 'Content-Type': 'application/json' },
     })
 
     this.agenticClient = axios.create({
-      baseURL: getAgenticApiUrl(),
+      baseURL: getAgenticApiBaseUrl(),
       headers: { 'Content-Type': 'application/json' },
     })
 
@@ -52,7 +56,7 @@ class ApiClient {
           const refreshToken = localStorage.getItem('refreshToken')
           if (refreshToken) {
             try {
-              const response = await axios.post(`${getApiBaseUrl()}/api/Auth/refresh`, {
+              const response = await axios.post(`${getAuthApiBaseUrl()}/api/Auth/refresh`, {
                 refreshToken,
               })
               const { accessToken, refreshToken: newRefreshToken } = response.data
@@ -82,7 +86,7 @@ class ApiClient {
           const refreshToken = localStorage.getItem('refreshToken')
           if (refreshToken) {
             try {
-              const response = await axios.post(`${getApiBaseUrl()}/api/Auth/refresh`, {
+              const response = await axios.post(`${getAuthApiBaseUrl()}/api/Auth/refresh`, {
                 refreshToken,
               })
               const { accessToken, refreshToken: newRefreshToken } = response.data

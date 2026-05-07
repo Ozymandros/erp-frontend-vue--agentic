@@ -29,6 +29,14 @@ export const menuConfig: MenuItem[] = [
     ],
   },
   {
+    title: 'Management',
+    icon: 'mdi-cog',
+    children: [
+      { title: 'Providers', icon: 'mdi-dns', to: '/providers' },
+      { title: 'Models', icon: 'mdi-brain', to: '/models' },
+    ],
+  },
+  {
     title: 'Settings',
     icon: 'mdi-cog',
     to: '/settings',

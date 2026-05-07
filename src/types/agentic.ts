@@ -14,6 +14,8 @@ export interface AgentDto {
   id: string
   name: string
   description: string
+  providerId: string
+  providerName: string
   modelId: string
   modelName: string
   botType: BotType
@@ -32,6 +34,7 @@ export interface AgentDto {
 export interface CreateAgentDto {
   name: string
   description: string
+  providerId: string
   modelId: string
   temperature: number
   systemPrompt: string
@@ -48,6 +51,7 @@ export interface CreateAgentDto {
 export interface UpdateAgentDto {
   name: string
   description: string
+  providerId: string
   modelId: string
   temperature: number
   systemPrompt: string
@@ -61,6 +65,79 @@ export interface UpdateAgentDto {
 }
 
 export type BotType = number
+
+// Provider and Model Types
+export interface AIProviderDto {
+  id: string
+  name: string
+  baseUrl: string
+  secretKeyName: string
+}
+
+export interface CreateAIProviderDto {
+  name: string
+  baseUrl: string
+  secretKeyName: string
+}
+
+export interface UpdateAIProviderDto {
+  name: string
+  baseUrl: string
+  secretKeyName: string
+}
+
+export interface AIModelDto {
+  id: string
+  providerId: string
+  providerName: string
+  commercialName: string
+  technicalName: string
+  tokenLimit: number
+  capabilities: string
+  defaultTemperature: number
+  defaultTopK: number
+  defaultMaxTokens: number
+  defaultEmbeddingDimensions: number
+  defaultEnableMemory: boolean
+  defaultEnableRAG: boolean
+  defaultEmbeddingModelName: string | null
+  defaultBotType: BotType
+  defaultSystemPrompt: string | null
+}
+
+export interface CreateAIModelDto {
+  providerId: string
+  commercialName: string
+  technicalName: string
+  tokenLimit: number
+  capabilities: string
+  defaultTemperature?: number
+  defaultTopK?: number
+  defaultMaxTokens?: number
+  defaultEmbeddingDimensions?: number
+  defaultEnableMemory?: boolean
+  defaultEnableRAG?: boolean
+  defaultEmbeddingModelName?: string | null
+  defaultBotType?: BotType
+  defaultSystemPrompt?: string | null
+}
+
+export interface UpdateAIModelDto {
+  providerId: string
+  commercialName: string
+  technicalName: string
+  tokenLimit: number
+  capabilities: string
+  defaultTemperature?: number
+  defaultTopK?: number
+  defaultMaxTokens?: number
+  defaultEmbeddingDimensions?: number
+  defaultEnableMemory?: boolean
+  defaultEnableRAG?: boolean
+  defaultEmbeddingModelName?: string | null
+  defaultBotType?: BotType
+  defaultSystemPrompt?: string | null
+}
 
 // Session Types
 export interface SessionListItemDto {

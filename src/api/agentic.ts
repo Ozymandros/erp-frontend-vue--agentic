@@ -1,9 +1,15 @@
 import { apiClient } from '@/utils/apiClient'
 import type {
+  AIModelDto,
+  AIProviderDto,
   AgentListDto,
   AgentDto,
+  CreateAIModelDto,
+  CreateAIProviderDto,
   CreateAgentDto,
   UpdateAgentDto,
+  UpdateAIModelDto,
+  UpdateAIProviderDto,
   SessionListItemDto,
   SessionDetailsResponse,
   StartSessionRequest,
@@ -13,6 +19,61 @@ import type {
 } from '@/types'
 
 export const agenticApi = {
+  // Providers
+  getProviders: async (): Promise<AIProviderDto[]> => {
+    const response = await apiClient.agentic.get<AIProviderDto[]>('/api/agentic/providers')
+    return response.data
+  },
+
+  getProvider: async (id: string): Promise<AIProviderDto> => {
+    const response = await apiClient.agentic.get<AIProviderDto>(`/api/agentic/providers/${id}`)
+    return response.data
+  },
+
+  createProvider: async (data: CreateAIProviderDto): Promise<AIProviderDto> => {
+    const response = await apiClient.agentic.post<AIProviderDto>('/api/agentic/providers', data)
+    return response.data
+  },
+
+  updateProvider: async (id: string, data: UpdateAIProviderDto): Promise<AIProviderDto> => {
+    const response = await apiClient.agentic.put<AIProviderDto>(`/api/agentic/providers/${id}`, data)
+    return response.data
+  },
+
+  deleteProvider: async (id: string): Promise<void> => {
+    await apiClient.agentic.delete(`/api/agentic/providers/${id}`)
+  },
+
+  // Models
+  getModels: async (): Promise<AIModelDto[]> => {
+    const response = await apiClient.agentic.get<AIModelDto[]>('/api/agentic/models')
+    return response.data
+  },
+
+  getModelsByProvider: async (providerId: string): Promise<AIModelDto[]> => {
+    const response = await apiClient.agentic.get<AIModelDto[]>(`/api/agentic/models/by-provider/${providerId}`)
+    return response.data
+  },
+
+  getModel: async (id: string): Promise<AIModelDto> => {
+    const response = await apiClient.agentic.get<AIModelDto>(`/api/agentic/models/${id}`)
+    return response.data
+  },
+
+  createModel: async (data: CreateAIModelDto): Promise<AIModelDto> => {
+    const response = await apiClient.agentic.post<AIModelDto>('/api/agentic/models', data)
+    return response.data
+  },
+
+  updateModel: async (id: string, data: UpdateAIModelDto): Promise<AIModelDto> => {
+    const response = await apiClient.agentic.put<AIModelDto>(`/api/agentic/models/${id}`, data)
+    return response.data
+  },
+
+  deleteModel: async (id: string): Promise<void> => {
+    await apiClient.agentic.delete(`/api/agentic/models/${id}`)
+  },
+
   // Agents
   getAgents: async (): Promise<AgentListDto[]> => {
     const response = await apiClient.agentic.get<AgentListDto[]>('/api/agentic/agents')

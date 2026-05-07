@@ -46,6 +46,16 @@ const routes: RouteRecordRaw[] = [
         props: true,
       },
       {
+        path: 'providers',
+        name: 'providers',
+        component: () => import('@/pages/ProvidersPage.vue'),
+      },
+      {
+        path: 'models',
+        name: 'models',
+        component: () => import('@/pages/ModelsPage.vue'),
+      },
+      {
         path: 'sessions',
         name: 'sessions',
         component: () => import('@/pages/SessionsPage.vue'),
@@ -79,17 +89,19 @@ const router = createRouter({
   routes,
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach((to) => {
   const authStore = useAuthStore()
   const isAuthenticated = authStore.isAuthenticated
 
   if (to.meta.requiresAuth && !isAuthenticated) {
-    next({ name: 'login', query: { redirect: to.fullPath } })
-  } else if (to.meta.guest && isAuthenticated) {
-    next({ name: 'dashboard' })
-  } else {
-    next()
+    return { name: 'login', query: { redirect: to.fullPath } }
   }
+
+  if (to.meta.guest && isAuthenticated) {
+    return { name: 'dashboard' }
+  }
+
+  return true
 })
 
 export default router
