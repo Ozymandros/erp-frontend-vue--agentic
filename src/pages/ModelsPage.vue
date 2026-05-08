@@ -289,37 +289,102 @@ function touch(field: string) {
                 />
               </v-col>
               <v-col cols="12" md="6">
-                <v-text-field v-model.number="form.tokenLimit" label="Token Limit" type="number" required />
+                <v-text-field
+                  v-model.number="form.tokenLimit"
+                  label="Token Limit"
+                  type="number"
+                  :error-messages="getFieldError(fieldErrors, 'tokenLimit') || (touched.tokenLimit && form.tokenLimit < 1 ? ['Token limit must be greater than 0'] : [])"
+                  @blur="touch('tokenLimit')"
+                />
               </v-col>
               <v-col cols="12">
-                <v-text-field v-model="form.capabilities" label="Capabilities" required />
+                <v-text-field
+                  v-model="form.capabilities"
+                  label="Capabilities"
+                  :error-messages="getFieldError(fieldErrors, 'capabilities') || (touched.capabilities && !form.capabilities ? ['Capabilities are required'] : [])"
+                  @blur="touch('capabilities')"
+                />
               </v-col>
               <v-col cols="12" md="4">
-                <v-text-field v-model.number="form.defaultTemperature" label="Default Temperature" type="number" step="0.1" />
+                <v-text-field
+                  v-model.number="form.defaultTemperature"
+                  label="Default Temperature"
+                  type="number"
+                  step="0.1"
+                  :error-messages="getFieldError(fieldErrors, 'defaultTemperature')"
+                  @blur="touch('defaultTemperature')"
+                />
               </v-col>
               <v-col cols="12" md="4">
-                <v-text-field v-model.number="form.defaultTopK" label="Default Top K" type="number" />
+                <v-text-field
+                  v-model.number="form.defaultTopK"
+                  label="Default Top K"
+                  type="number"
+                  :error-messages="getFieldError(fieldErrors, 'defaultTopK')"
+                  @blur="touch('defaultTopK')"
+                />
               </v-col>
               <v-col cols="12" md="4">
-                <v-text-field v-model.number="form.defaultMaxTokens" label="Default Max Tokens" type="number" />
+                <v-text-field
+                  v-model.number="form.defaultMaxTokens"
+                  label="Default Max Tokens"
+                  type="number"
+                  :error-messages="getFieldError(fieldErrors, 'defaultMaxTokens')"
+                  @blur="touch('defaultMaxTokens')"
+                />
               </v-col>
               <v-col cols="12" md="4">
-                <v-text-field v-model.number="form.defaultEmbeddingDimensions" label="Default Embedding Dimensions" type="number" />
+                <v-text-field
+                  v-model.number="form.defaultEmbeddingDimensions"
+                  label="Default Embedding Dimensions"
+                  type="number"
+                  :error-messages="getFieldError(fieldErrors, 'defaultEmbeddingDimensions')"
+                  @blur="touch('defaultEmbeddingDimensions')"
+                />
               </v-col>
               <v-col cols="12" md="4">
-                <v-text-field v-model.number="form.defaultBotType" label="Default Bot Type" type="number" />
+                <v-text-field
+                  v-model.number="form.defaultBotType"
+                  label="Default Bot Type"
+                  type="number"
+                  :error-messages="getFieldError(fieldErrors, 'defaultBotType')"
+                  @blur="touch('defaultBotType')"
+                />
               </v-col>
               <v-col cols="12" md="4">
-                <v-text-field v-model="form.defaultEmbeddingModelName" label="Default Embedding Model Name" />
+                <v-text-field
+                  v-model="form.defaultEmbeddingModelName"
+                  label="Default Embedding Model Name"
+                  :error-messages="getFieldError(fieldErrors, 'defaultEmbeddingModelName')"
+                  @blur="touch('defaultEmbeddingModelName')"
+                />
               </v-col>
               <v-col cols="12" md="6">
-                <v-switch v-model="form.defaultEnableMemory" label="Default Enable Memory" color="primary" />
+                <v-switch
+                  v-model="form.defaultEnableMemory"
+                  label="Default Enable Memory"
+                  color="primary"
+                  :error-messages="getFieldError(fieldErrors, 'defaultEnableMemory')"
+                  @blur="touch('defaultEnableMemory')"
+                />
               </v-col>
               <v-col cols="12" md="6">
-                <v-switch v-model="form.defaultEnableRAG" label="Default Enable RAG" color="primary" />
+                <v-switch
+                  v-model="form.defaultEnableRAG"
+                  label="Default Enable RAG"
+                  color="primary"
+                  :error-messages="getFieldError(fieldErrors, 'defaultEnableRAG')"
+                  @blur="touch('defaultEnableRAG')"
+                />
               </v-col>
               <v-col cols="12">
-                <v-textarea v-model="form.defaultSystemPrompt" label="Default System Prompt" rows="4" />
+                <v-textarea
+                  v-model="form.defaultSystemPrompt"
+                  label="Default System Prompt"
+                  rows="4"
+                  :error-messages="getFieldError(fieldErrors, 'defaultSystemPrompt')"
+                  @blur="touch('defaultSystemPrompt')"
+                />
               </v-col>
             </v-row>
             <div class="d-flex justify-end mt-4">
