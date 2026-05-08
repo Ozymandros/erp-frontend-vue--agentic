@@ -16,7 +16,6 @@ export const createAgentSchema = z.object({
     .string()
     .min(1, 'System prompt is required')
     .max(5000, 'System prompt must be less than 5000 characters'),
-  tenantId: z.uuid('Invalid Tenant ID format').optional(),
   botType: z.coerce.number().int().min(0).max(3),
   topK: z.coerce.number().int().min(1).max(100).optional(),
   maxTokens: z.coerce.number().int().min(1).max(32000).optional(),

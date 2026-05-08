@@ -67,9 +67,9 @@ async function handleDelete() {
             {{ value ? 'Active' : 'Inactive' }}
           </v-chip>
         </template>
-        <template #[`item.actions`]="{ value }">
-          <v-btn icon="mdi-pencil" size="small" variant="text" :to="`/agents/${value.id}`" />
-          <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="confirmDelete(value.id)" />
+        <template #[`item.actions`]="{ item }">
+          <v-btn icon="mdi-pencil" size="small" variant="text" :to="`/agents/${item.id}`" />
+          <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="confirmDelete(item.id)" />
         </template>
       </v-data-table>
     </v-card>

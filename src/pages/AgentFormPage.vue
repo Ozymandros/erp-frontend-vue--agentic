@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAgents } from '@/composables/useAgents'
+import { useProviders } from '@/composables/useProviders'
+import { useModels } from '@/composables/useModels'
 import { createAgentSchema, updateAgentSchema } from '@/schemas/agent'
 import { validateSchema, getFieldError } from '@/schemas/validation'
 
 const route = useRoute()
 const router = useRouter()
 const { currentAgent, error: storeError, fetchAgent, createAgent, updateAgent } = useAgents()
+const { providers, fetchProviders } = useProviders()
+const { modelsByProvider, fetchModelsByProvider, clearModelsByProvider } = useModels()
 
 const isEdit = computed(() => !!route.params.id)
 const agentId = computed(() => route.params.id as string)
@@ -15,10 +19,10 @@ const agentId = computed(() => route.params.id as string)
 const form = ref({
   name: '',
   description: '',
+  providerId: '',
   modelId: '',
   temperature: 0.7,
   systemPrompt: '',
-  tenantId: '',
   botType: 1,
   topK: 3,
   maxTokens: 2048,
@@ -30,6 +34,7 @@ const form = ref({
 
 const touched = ref<Record<string, boolean>>({})
 const saving = ref(false)
+const isInitializing = ref(false)
 
 const schema = computed(() => isEdit.value ? updateAgentSchema : createAgentSchema)
 
@@ -50,17 +55,37 @@ const botTypes = [
   { title: 'Assistant', value: 3 },
 ]
 
+const providerOptions = computed(() =>
+  providers.value.map((provider) => ({
+    title: provider.name,
+    value: provider.id,
+  }))
+)
+
+const modelOptions = computed(() =>
+  modelsByProvider.value.map((model) => ({
+    title: `${model.commercialName} (${model.technicalName})`,
+    value: model.id,
+  }))
+)
+
+const isModelDisabled = computed(() => !form.value.providerId)
+
 onMounted(async () => {
+  isInitializing.value = true
+  await fetchProviders()
+
   if (isEdit.value) {
     await fetchAgent(agentId.value)
     if (currentAgent.value) {
+      await loadModelsForProvider(currentAgent.value.providerId)
       form.value = {
         name: currentAgent.value.name,
         description: currentAgent.value.description,
+        providerId: currentAgent.value.providerId,
         modelId: currentAgent.value.modelId,
         temperature: currentAgent.value.temperature,
         systemPrompt: currentAgent.value.systemPrompt,
-        tenantId: currentAgent.value.tenantId || '',
         botType: currentAgent.value.botType,
         topK: currentAgent.value.topK,
         maxTokens: currentAgent.value.maxTokens,
@@ -71,11 +96,58 @@ onMounted(async () => {
       }
     }
   }
+
+  isInitializing.value = false
 })
 
 function touch(field: string) {
   touched.value[field] = true
 }
+
+async function loadModelsForProvider(providerId: string) {
+  if (!providerId) {
+    clearModelsByProvider()
+    return
+  }
+  await fetchModelsByProvider(providerId)
+}
+
+function applyModelDefaults(modelId: string) {
+  const model = modelsByProvider.value.find((item) => item.id === modelId)
+  if (!model) return
+
+  form.value.temperature = model.defaultTemperature
+  form.value.topK = model.defaultTopK
+  form.value.maxTokens = model.defaultMaxTokens
+  form.value.embeddingDimensions = model.defaultEmbeddingDimensions
+  form.value.enableMemory = model.defaultEnableMemory
+  form.value.enableRAG = model.defaultEnableRAG
+  form.value.botType = model.defaultBotType
+  form.value.systemPrompt = model.defaultSystemPrompt ?? ''
+  form.value.embeddingModelName = model.defaultEmbeddingModelName ?? ''
+}
+
+watch(
+  () => form.value.providerId,
+  async (providerId, previousProviderId) => {
+    if (providerId === previousProviderId) return
+
+    if (!isInitializing.value) {
+      form.value.modelId = ''
+      clearModelsByProvider()
+    }
+
+    await loadModelsForProvider(providerId)
+  }
+)
+
+watch(
+  () => form.value.modelId,
+  (modelId) => {
+    if (!modelId) return
+    applyModelDefaults(modelId)
+  }
+)
 
 async function handleSubmit() {
   const result = validateSchema(schema.value, form.value)
@@ -96,7 +168,6 @@ async function handleSubmit() {
       modelId: data.modelId || '',
       temperature: data.temperature ?? 0.7,
       systemPrompt: data.systemPrompt || '',
-      tenantId: data.tenantId || undefined,
       botType: data.botType ?? 1,
       topK: data.topK ?? 3,
       maxTokens: data.maxTokens ?? 2048,
@@ -141,6 +212,29 @@ async function handleSubmit() {
             </v-col>
             <v-col cols="12" md="6">
               <v-select
+                v-model="form.providerId"
+                :items="providerOptions"
+                item-title="title"
+                item-value="value"
+                label="Provider"
+                :error-messages="getFieldError(fieldErrors, 'providerId')"
+                @blur="touch('providerId')"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-select
+                v-model="form.modelId"
+                :items="modelOptions"
+                item-title="title"
+                item-value="value"
+                label="Model"
+                :disabled="isModelDisabled"
+                :error-messages="getFieldError(fieldErrors, 'modelId')"
+                @blur="touch('modelId')"
+              />
+            </v-col>
+            <v-col cols="12" md="6">
+              <v-select
                 v-model.number="form.botType"
                 :items="botTypes"
                 label="Bot Type"
@@ -153,14 +247,6 @@ async function handleSubmit() {
                 :error-messages="getFieldError(fieldErrors, 'description')"
                 @blur="touch('description')"
                 rows="3"
-              />
-            </v-col>
-            <v-col cols="12" md="6">
-              <v-text-field
-                v-model="form.modelId"
-                label="Model ID (UUID)"
-                :error-messages="getFieldError(fieldErrors, 'modelId')"
-                @blur="touch('modelId')"
               />
             </v-col>
             <v-col cols="12" md="6">

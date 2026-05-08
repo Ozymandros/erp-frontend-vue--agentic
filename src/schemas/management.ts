@@ -4,6 +4,15 @@ export const providerSchema = z.object({
   name: z.string().min(1, 'Provider name is required'),
   baseUrl: z.string().min(1, 'Base URL is required').url('Base URL must be a valid URL'),
   secretKeyName: z.string().min(1, 'Secret key name is required'),
+  defaultTemperature: z.coerce.number().min(0).max(2),
+  defaultTopK: z.coerce.number().int().min(1),
+  defaultMaxTokens: z.coerce.number().int().min(1),
+  defaultEmbeddingDimensions: z.coerce.number().int().min(1),
+  defaultEnableMemory: z.boolean(),
+  defaultEnableRAG: z.boolean(),
+  defaultEmbeddingModelName: z.string().optional(),
+  defaultBotType: z.coerce.number().int().min(0).max(3),
+  defaultSystemPrompt: z.string().optional(),
 })
 
 export const modelSchema = z.object({

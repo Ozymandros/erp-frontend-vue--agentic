@@ -28,7 +28,6 @@ export interface AgentDto {
   enableRAG: boolean
   embeddingModelName: string | null
   isActive: boolean
-  tenantId: string | null
 }
 
 export interface CreateAgentDto {
@@ -38,7 +37,6 @@ export interface CreateAgentDto {
   modelId: string
   temperature: number
   systemPrompt: string
-  tenantId?: string
   botType?: BotType
   topK?: number
   maxTokens?: number

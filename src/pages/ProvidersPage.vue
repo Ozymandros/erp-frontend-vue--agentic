@@ -15,10 +15,25 @@ const providerToDelete = ref<AIProviderDto | null>(null)
 const saving = ref(false)
 const touched = ref<Record<string, boolean>>({})
 
+function baseDefaults() {
+  return {
+    defaultTemperature: 0.7,
+    defaultTopK: 3,
+    defaultMaxTokens: 2048,
+    defaultEmbeddingDimensions: 1536,
+    defaultEnableMemory: true,
+    defaultEnableRAG: true,
+    defaultEmbeddingModelName: '',
+    defaultBotType: 1,
+    defaultSystemPrompt: '',
+  }
+}
+
 const form = ref({
   name: '',
   baseUrl: '',
   secretKeyName: '',
+  ...baseDefaults(),
 })
 
 const headers = [
@@ -45,7 +60,12 @@ onMounted(() => {
 function openCreateDialog() {
   editingProvider.value = null
   touched.value = {}
-  form.value = { name: '', baseUrl: '', secretKeyName: '' }
+  form.value = {
+    name: '',
+    baseUrl: '',
+    secretKeyName: '',
+    ...baseDefaults(),
+  }
   dialog.value = true
 }
 
@@ -56,6 +76,15 @@ function openEditDialog(provider: AIProviderDto) {
     name: provider.name,
     baseUrl: provider.baseUrl,
     secretKeyName: provider.secretKeyName,
+    defaultTemperature: provider.defaultTemperature,
+    defaultTopK: provider.defaultTopK,
+    defaultMaxTokens: provider.defaultMaxTokens,
+    defaultEmbeddingDimensions: provider.defaultEmbeddingDimensions,
+    defaultEnableMemory: provider.defaultEnableMemory,
+    defaultEnableRAG: provider.defaultEnableRAG,
+    defaultEmbeddingModelName: provider.defaultEmbeddingModelName ?? '',
+    defaultBotType: provider.defaultBotType,
+    defaultSystemPrompt: provider.defaultSystemPrompt ?? '',
   }
   dialog.value = true
 }
@@ -81,10 +110,16 @@ async function submitForm() {
 
   saving.value = true
   try {
+    const normalizedPayload = {
+      ...payload,
+      defaultEmbeddingModelName: payload.defaultEmbeddingModelName || null,
+      defaultSystemPrompt: payload.defaultSystemPrompt || null,
+    }
+
     if (editingProvider.value) {
-      await updateProvider(editingProvider.value.id, payload)
+      await updateProvider(editingProvider.value.id, normalizedPayload)
     } else {
-      await createProvider(payload)
+      await createProvider(normalizedPayload)
     }
     await fetchProviders()
     dialog.value = false
@@ -135,7 +170,7 @@ async function handleDelete() {
       </v-data-table>
     </v-card>
 
-    <v-dialog v-model="dialog" max-width="640">
+    <v-dialog v-model="dialog" max-width="900">
       <v-card>
         <v-card-title>{{ editingProvider ? 'Edit Provider' : 'Create Provider' }}</v-card-title>
         <v-card-text>
@@ -158,6 +193,73 @@ async function handleDelete() {
               :error-messages="getFieldError(fieldErrors, 'secretKeyName') || (touched.secretKeyName && !form.secretKeyName ? ['Secret key name is required'] : [])"
               @blur="touch('secretKeyName')"
             />
+
+            <v-row>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model.number="form.defaultTemperature"
+                  label="Default Temperature"
+                  type="number"
+                  step="0.1"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model.number="form.defaultTopK"
+                  label="Default Top K"
+                  type="number"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model.number="form.defaultMaxTokens"
+                  label="Default Max Tokens"
+                  type="number"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model.number="form.defaultEmbeddingDimensions"
+                  label="Default Embedding Dimensions"
+                  type="number"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model.number="form.defaultBotType"
+                  label="Default Bot Type"
+                  type="number"
+                />
+              </v-col>
+              <v-col cols="12" md="4">
+                <v-text-field
+                  v-model="form.defaultEmbeddingModelName"
+                  label="Default Embedding Model Name"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-switch
+                  v-model="form.defaultEnableMemory"
+                  label="Default Enable Memory"
+                  color="primary"
+                />
+              </v-col>
+              <v-col cols="12" md="6">
+                <v-switch
+                  v-model="form.defaultEnableRAG"
+                  label="Default Enable RAG"
+                  color="primary"
+                />
+              </v-col>
+              <v-col cols="12">
+                <v-textarea
+                  v-model="form.defaultSystemPrompt"
+                  label="Default System Prompt"
+                  rows="4"
+                />
+              </v-col>
+            </v-row>
+
             <div class="d-flex justify-end mt-4">
               <v-btn variant="text" class="mr-2" @click="dialog = false">Cancel</v-btn>
               <v-btn type="submit" color="primary" :loading="saving">Save</v-btn>
