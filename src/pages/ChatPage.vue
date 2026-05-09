@@ -6,8 +6,11 @@ import { useAgents } from '@/composables/useAgents'
 
 const route = useRoute()
 const router = useRouter()
-const { currentSession, sendingMessage, error, sendMessage, loadSession } = useChat()
+const { currentSession, sendingMessage, error: chatError, sendMessage, loadSession } = useChat()
 const { agents, fetchAgents } = useAgents()
+
+const sttError = ref('')
+const error = computed(() => chatError.value || sttError.value)
 
 const sessionId = computed(() => route.params.id as string | undefined)
 const messageInput = ref('')
@@ -17,8 +20,91 @@ const messageList = ref<{ id: string; role: string; content: string; timestamp: 
 const selectedAgentId = ref<string>('')
 const showAgentSelect = ref(false)
 
+interface SpeechRecognitionEvent extends Event {
+  results: {
+    [key: number]: {
+      [key: number]: {
+        transcript: string
+      }
+    }
+  }
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean
+  interimResults: boolean
+  lang: string
+  onstart: () => void
+  onresult: (event: SpeechRecognitionEvent) => void
+  onerror: (event: SpeechRecognitionErrorEvent) => void
+  onend: () => void
+  start: () => void
+  stop: () => void
+}
+
+// Speech to Text state
+const isListening = ref(false)
+const isSpeechSupported = ref(false)
+let recognition: SpeechRecognition | null = null
+
 onMounted(async () => {
   await fetchAgents()
+  
+  // Initialize Speech Recognition
+  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+  if (SpeechRecognition) {
+    isSpeechSupported.value = true
+    const rec = new SpeechRecognition() as SpeechRecognition
+    rec.continuous = false
+    rec.interimResults = false
+    rec.lang = navigator.language || 'en-US'
+
+    rec.onstart = () => {
+      console.log('Speech recognition started')
+      isListening.value = true
+      sttError.value = ''
+    }
+
+    rec.onresult = (event: SpeechRecognitionEvent) => {
+      console.log('Speech recognition result event received', event)
+      
+      let transcript = ''
+      if (event.results && event.results[0] && event.results[0][0]) {
+        transcript = event.results[0][0].transcript
+      }
+
+      console.log('Transcribed text:', transcript)
+      if (transcript) {
+        messageInput.value = (messageInput.value + ' ' + transcript).trim()
+      } else {
+        console.warn('Transcript was empty')
+      }
+    }
+
+    rec.onerror = (event: SpeechRecognitionErrorEvent) => {
+      console.error('Speech recognition error:', event.error)
+      if (event.error === 'no-speech') {
+        sttError.value = 'No speech was detected. Please try again.'
+      } else if (event.error === 'not-allowed') {
+        sttError.value = 'Microphone access denied. Please check permissions.'
+      } else {
+        sttError.value = `Speech error: ${event.error}`
+      }
+      isListening.value = false
+    }
+
+    rec.onend = () => {
+      console.log('Speech recognition ended')
+      isListening.value = false
+    }
+    
+    recognition = rec
+  }
+
   if (sessionId.value) {
     await loadSession(sessionId.value)
     if (currentSession.value) {
@@ -76,6 +162,27 @@ function startNewChat() {
 function selectAgent(agentId: string) {
   selectedAgentId.value = agentId
   showAgentSelect.value = false
+}
+
+function toggleSpeechToText() {
+  if (!isSpeechSupported.value || !recognition) {
+    sttError.value = 'Speech recognition is not supported in this browser.'
+    return
+  }
+
+  if (isListening.value) {
+    console.log('Stopping speech recognition...')
+    recognition.stop()
+  } else {
+    try {
+      console.log('Starting speech recognition...')
+      recognition.start()
+    } catch (err) {
+      console.error('Failed to start recognition:', err)
+      isListening.value = false
+      sttError.value = 'Could not start microphone. It might already be in use.'
+    }
+  }
 }
 </script>
 
@@ -139,6 +246,15 @@ function selectAgent(agentId: string) {
             @keyup.enter="handleSend"
           >
             <template #append-inner>
+              <v-btn
+                v-if="isSpeechSupported"
+                :icon="isListening ? 'mdi-microphone' : 'mdi-microphone-outline'"
+                variant="text"
+                :color="isListening ? 'error' : 'primary'"
+                :disabled="sendingMessage || (!selectedAgentId && !currentSession)"
+                class="mr-1"
+                @click="toggleSpeechToText"
+              />
               <v-btn
                 icon="mdi-send"
                 variant="text"
