@@ -115,9 +115,13 @@ describe('agent schemas', () => {
   const validAgentData = {
     name: 'Test Agent',
     description: 'A test agent for testing',
+    providerId: '11111111-1111-4111-8111-111111111111',
     modelId: '550e8400-e29b-41d4-a716-446655440000',
     temperature: 0.7,
     systemPrompt: 'You are a helpful AI assistant.',
+    botType: 1,
+    enableMemory: true,
+    enableRAG: true,
   }
 
   describe('createAgentSchema', () => {
@@ -158,6 +162,17 @@ describe('agent schemas', () => {
         modelId: 'not-a-uuid',
       })
       expect(result.success).toBe(false)
+    })
+
+    it('trims UUID fields before validating', () => {
+      const result = createAgentSchema.safeParse({
+        ...validAgentData,
+        providerId: ' 11111111-1111-4111-8111-111111111111 ',
+        modelId: ' 550e8400-e29b-41d4-a716-446655440000 ',
+      })
+      expect(result.success).toBe(true)
+      expect(result.success && result.data.providerId).toBe('11111111-1111-4111-8111-111111111111')
+      expect(result.success && result.data.modelId).toBe('550e8400-e29b-41d4-a716-446655440000')
     })
 
     it('rejects temperature below 0', () => {
@@ -312,6 +327,7 @@ describe('agent schemas', () => {
       const result = updateAgentSchema.safeParse({
         name: 'Updated Name',
         description: 'Updated description',
+        providerId: '11111111-1111-4111-8111-111111111111',
         modelId: '550e8400-e29b-41d4-a716-446655440000',
         temperature: 0.8,
         systemPrompt: 'Updated prompt',

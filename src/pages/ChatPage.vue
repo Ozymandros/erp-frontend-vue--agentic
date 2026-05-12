@@ -6,7 +6,7 @@ import { useAgents } from '@/composables/useAgents'
 
 const route = useRoute()
 const router = useRouter()
-const { currentSession, sendingMessage, error: chatError, sendMessage, loadSession } = useChat()
+const { currentSession, sendingMessage, loading: sessionLoading, error: chatError, sendMessage, loadSession, createSession } = useChat()
 const { agents, fetchAgents } = useAgents()
 
 const sttError = ref('')
@@ -46,6 +46,13 @@ interface SpeechRecognition extends EventTarget {
   stop: () => void
 }
 
+type SpeechRecognitionConstructor = new () => SpeechRecognition
+
+interface WindowWithSpeechRecognition extends Window {
+  SpeechRecognition?: SpeechRecognitionConstructor
+  webkitSpeechRecognition?: SpeechRecognitionConstructor
+}
+
 // Speech to Text state
 const isListening = ref(false)
 const isSpeechSupported = ref(false)
@@ -55,7 +62,8 @@ onMounted(async () => {
   await fetchAgents()
   
   // Initialize Speech Recognition
-  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+  const speechWindow = window as WindowWithSpeechRecognition
+  const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition
   if (SpeechRecognition) {
     isSpeechSupported.value = true
     const rec = new SpeechRecognition() as SpeechRecognition
@@ -108,6 +116,7 @@ onMounted(async () => {
   if (sessionId.value) {
     await loadSession(sessionId.value)
     if (currentSession.value) {
+      selectedAgentId.value = currentSession.value.agentId
       messageList.value = [...currentSession.value.messages]
       await scrollToBottom()
     }
@@ -156,12 +165,30 @@ async function handleSend() {
 }
 
 function startNewChat() {
+  selectedAgentId.value = ''
+  messageInput.value = ''
+  messageList.value = []
   showAgentSelect.value = true
 }
 
-function selectAgent(agentId: string) {
+async function selectAgent(agentId: string) {
   selectedAgentId.value = agentId
   showAgentSelect.value = false
+  sttError.value = ''
+
+  if (sessionId.value) return
+
+  try {
+    const createdSession = await createSession(agentId)
+    await router.replace(`/sessions/${createdSession.sessionId}`)
+    await loadSession(createdSession.sessionId)
+    if (currentSession.value) {
+      selectedAgentId.value = currentSession.value.agentId
+      messageList.value = [...currentSession.value.messages]
+    }
+  } catch {
+    // Error is surfaced via store/computed error snackbar
+  }
 }
 
 function toggleSpeechToText() {
@@ -242,7 +269,7 @@ function toggleSpeechToText() {
             variant="solo-filled"
             density="compact"
             hide-details
-            :disabled="sendingMessage || (!selectedAgentId && !currentSession)"
+            :disabled="sendingMessage || sessionLoading || (!selectedAgentId && !currentSession)"
             @keyup.enter="handleSend"
           >
             <template #append-inner>
@@ -251,7 +278,7 @@ function toggleSpeechToText() {
                 :icon="isListening ? 'mdi-microphone' : 'mdi-microphone-outline'"
                 variant="text"
                 :color="isListening ? 'error' : 'primary'"
-                :disabled="sendingMessage || (!selectedAgentId && !currentSession)"
+                :disabled="sendingMessage || sessionLoading || (!selectedAgentId && !currentSession)"
                 class="mr-1"
                 @click="toggleSpeechToText"
               />
@@ -259,7 +286,7 @@ function toggleSpeechToText() {
                 icon="mdi-send"
                 variant="text"
                 color="primary"
-                :disabled="!messageInput.trim() || sendingMessage"
+                :disabled="!messageInput.trim() || sendingMessage || sessionLoading"
                 @click="handleSend"
               />
             </template>

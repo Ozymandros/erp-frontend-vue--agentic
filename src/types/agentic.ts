@@ -69,7 +69,7 @@ export interface AIProviderDto {
   id: string
   name: string
   baseUrl: string
-  secretKeyName: string
+  apiKey: string
   defaultTemperature: number
   defaultTopK: number
   defaultMaxTokens: number
@@ -84,7 +84,7 @@ export interface AIProviderDto {
 export interface CreateAIProviderDto {
   name: string
   baseUrl: string
-  secretKeyName: string
+  apiKey?: string | null
   defaultTemperature?: number
   defaultTopK?: number
   defaultMaxTokens?: number
@@ -99,7 +99,7 @@ export interface CreateAIProviderDto {
 export interface UpdateAIProviderDto {
   name: string
   baseUrl: string
-  secretKeyName: string
+  apiKey?: string | null
   defaultTemperature?: number
   defaultTopK?: number
   defaultMaxTokens?: number
@@ -228,7 +228,9 @@ export interface ProcessAgentMessageResponse {
   userId: string
   userMessage: string
   aiResponse: string
+  content: string
   timestamp: string
+  toolCalls?: ToolCallResult[] | null
 }
 
 export interface AgentExecutionOptions {

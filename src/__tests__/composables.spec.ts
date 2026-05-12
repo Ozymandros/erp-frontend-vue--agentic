@@ -325,8 +325,13 @@ describe('composables', () => {
 
     it('sends message via store', async () => {
       const mockResponse = {
+        sessionId: '1',
+        userId: 'u1',
+        userMessage: 'Hi',
         aiResponse: 'Hello!',
+        content: 'Hello!',
         timestamp: '2024-01-01T10:00:00Z',
+        toolCalls: [],
       }
       vi.mocked(agenticApi.agenticApi.sendMessage).mockResolvedValue(mockResponse)
 
@@ -410,6 +415,7 @@ describe('composables', () => {
       const validation = useFormValidation(createAgentSchema)
       validation.setField('name', 'Agent')
       validation.setField('description', 'desc')
+      validation.setField('providerId', '11111111-1111-4111-8111-111111111111')
       validation.setField('modelId', '550e8400-e29b-41d4-a716-446655440000')
       validation.setField('temperature', 0.7)
       validation.setField('systemPrompt', 'prompt')
@@ -420,6 +426,7 @@ describe('composables', () => {
       const { isValid, setField } = useFormValidation(createAgentSchema)
       setField('name', 'Agent')
       setField('description', 'desc')
+      setField('providerId', '11111111-1111-4111-8111-111111111111')
       setField('modelId', '550e8400-e29b-41d4-a716-446655440000')
       setField('temperature', '0.7') // String that should coerce to number
       setField('systemPrompt', 'prompt')

@@ -46,6 +46,7 @@ export function useChat() {
 
   const currentSession = computed(() => sessionsStore.currentSession)
   const sendingMessage = computed(() => sessionsStore.sendingMessage)
+  const loading = computed(() => sessionsStore.loading)
   const error = computed(() => sessionsStore.error)
 
   async function sendMessage(agentId: string, message: string, sessionId?: string) {
@@ -56,6 +57,10 @@ export function useChat() {
     await sessionsStore.fetchSession(id)
   }
 
+  async function createSession(agentId: string, title?: string) {
+    return await sessionsStore.createSession({ agentId, title })
+  }
+
   function clearSession() {
     sessionsStore.clearCurrentSession()
   }
@@ -63,9 +68,11 @@ export function useChat() {
   return {
     currentSession,
     sendingMessage,
+    loading,
     error,
     sendMessage,
     loadSession,
+    createSession,
     clearSession,
   }
 }

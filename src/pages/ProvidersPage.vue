@@ -5,7 +5,15 @@ import type { AIProviderDto } from '@/types'
 import { providerSchema } from '@/schemas/management'
 import { getFieldError, validateSchema } from '@/schemas/validation'
 
-const { providers, loading, error, fetchProviders, createProvider, updateProvider, deleteProvider } = useProviders()
+const {
+  providers,
+  loading,
+  error,
+  fetchProviders,
+  createProvider,
+  updateProvider,
+  deleteProvider,
+} = useProviders()
 
 const search = ref('')
 const dialog = ref(false)
@@ -32,14 +40,14 @@ function baseDefaults() {
 const form = ref({
   name: '',
   baseUrl: '',
-  secretKeyName: '',
+  apiKey: '',
   ...baseDefaults(),
 })
 
 const headers = [
   { title: 'Name', key: 'name' },
   { title: 'Base URL', key: 'baseUrl' },
-  { title: 'Secret Key Name', key: 'secretKeyName' },
+  { title: 'Api Key', key: 'apiKey' },
   { title: 'Actions', key: 'actions' },
 ]
 
@@ -63,7 +71,7 @@ function openCreateDialog() {
   form.value = {
     name: '',
     baseUrl: '',
-    secretKeyName: '',
+    apiKey: '',
     ...baseDefaults(),
   }
   dialog.value = true
@@ -75,7 +83,7 @@ function openEditDialog(provider: AIProviderDto) {
   form.value = {
     name: provider.name,
     baseUrl: provider.baseUrl,
-    secretKeyName: provider.secretKeyName,
+    apiKey: provider.apiKey,
     defaultTemperature: provider.defaultTemperature,
     defaultTopK: provider.defaultTopK,
     defaultMaxTokens: provider.defaultMaxTokens,
@@ -101,7 +109,9 @@ function confirmDelete(provider: AIProviderDto) {
 async function submitForm() {
   const result = validateSchema(providerSchema, form.value)
   if (!result.success) {
-    Object.keys(form.value).forEach((key) => { touched.value[key] = true })
+    Object.keys(form.value).forEach((key) => {
+      touched.value[key] = true
+    })
     return
   }
 
@@ -158,14 +168,25 @@ async function handleDelete() {
       </v-card-title>
       <v-data-table
         :headers="headers"
-        :items="providers"
+        :items="
+          providers?.map((item) => ({
+            ...item,
+            apiKey: item.apiKey ? `sk-...${item.apiKey?.substring(item.apiKey.length - 4)}` : '',
+          }))
+        "
         :search="search"
         :loading="loading"
         :items-per-page="10"
       >
         <template #[`item.actions`]="{ item }">
           <v-btn icon="mdi-pencil" size="small" variant="text" @click="openEditDialog(item)" />
-          <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="confirmDelete(item)" />
+          <v-btn
+            icon="mdi-delete"
+            size="small"
+            variant="text"
+            color="error"
+            @click="confirmDelete(item)"
+          />
         </template>
       </v-data-table>
     </v-card>
@@ -178,20 +199,30 @@ async function handleDelete() {
             <v-text-field
               v-model="form.name"
               label="Name"
-              :error-messages="getFieldError(fieldErrors, 'name') || (touched.name && !form.name ? ['Provider name is required'] : [])"
+              :error-messages="
+                getFieldError(fieldErrors, 'name') ||
+                (touched.name && !form.name ? ['Provider name is required'] : [])
+              "
               @blur="touch('name')"
             />
             <v-text-field
               v-model="form.baseUrl"
               label="Base URL"
-              :error-messages="getFieldError(fieldErrors, 'baseUrl') || (touched.baseUrl && !form.baseUrl ? ['Base URL is required'] : [])"
+              :error-messages="
+                getFieldError(fieldErrors, 'baseUrl') ||
+                (touched.baseUrl && !form.baseUrl ? ['Base URL is required'] : [])
+              "
               @blur="touch('baseUrl')"
             />
             <v-text-field
-              v-model="form.secretKeyName"
-              label="Secret Key Name"
-              :error-messages="getFieldError(fieldErrors, 'secretKeyName') || (touched.secretKeyName && !form.secretKeyName ? ['Secret key name is required'] : [])"
-              @blur="touch('secretKeyName')"
+              v-model="form.apiKey"
+              label="Api Key"
+              type="password"
+              :error-messages="
+                getFieldError(fieldErrors, 'apiKey') ||
+                (touched.apiKey && !form.apiKey ? ['Secret key name is required'] : [])
+              "
+              @blur="touch('apiKey')"
             />
 
             <v-row>
@@ -272,9 +303,7 @@ async function handleDelete() {
     <v-dialog v-model="deleteDialog" max-width="400">
       <v-card>
         <v-card-title>Delete Provider?</v-card-title>
-        <v-card-text>
-          Are you sure you want to delete {{ providerToDelete?.name }}?
-        </v-card-text>
+        <v-card-text> Are you sure you want to delete {{ providerToDelete?.name }}? </v-card-text>
         <v-card-actions>
           <v-spacer />
           <v-btn variant="text" @click="deleteDialog = false">Cancel</v-btn>

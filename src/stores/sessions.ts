@@ -85,7 +85,9 @@ export const useSessionsStore = defineStore('sessions', () => {
     error.value = null
     try {
       const response = await agenticApi.sendMessage(data)
-      if (currentSession.value && currentSession.value.sessionId === data.agentId) {
+      const targetSessionId = data.sessionId ?? response.sessionId
+
+      if (currentSession.value && currentSession.value.sessionId === targetSessionId) {
         currentSession.value.messages.push({
           id: crypto.randomUUID(),
           role: 'user',
@@ -95,7 +97,7 @@ export const useSessionsStore = defineStore('sessions', () => {
         currentSession.value.messages.push({
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: response.aiResponse,
+          content: response.content || response.aiResponse,
           timestamp: response.timestamp,
         })
         currentSession.value.lastMessageAt = response.timestamp

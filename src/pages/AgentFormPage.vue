@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAgents } from '@/composables/useAgents'
 import { useProviders } from '@/composables/useProviders'
@@ -36,7 +36,7 @@ const touched = ref<Record<string, boolean>>({})
 const saving = ref(false)
 const isInitializing = ref(false)
 
-const schema = computed(() => isEdit.value ? updateAgentSchema : createAgentSchema)
+const schema = computed(() => (isEdit.value ? updateAgentSchema : createAgentSchema))
 
 const fieldErrors = computed(() => {
   const result = schema.value.safeParse(form.value)
@@ -59,17 +59,18 @@ const providerOptions = computed(() =>
   providers.value.map((provider) => ({
     title: provider.name,
     value: provider.id,
-  }))
+  })),
 )
 
 const modelOptions = computed(() =>
   modelsByProvider.value.map((model) => ({
     title: `${model.commercialName} (${model.technicalName})`,
     value: model.id,
-  }))
+  })),
 )
 
 const isModelDisabled = computed(() => !form.value.providerId)
+const modelSelectKey = computed(() => `${form.value.providerId}:${modelOptions.value.length}:${form.value.modelId}`)
 
 onMounted(async () => {
   isInitializing.value = true
@@ -78,12 +79,11 @@ onMounted(async () => {
   if (isEdit.value) {
     await fetchAgent(agentId.value)
     if (currentAgent.value) {
-      await loadModelsForProvider(currentAgent.value.providerId)
       form.value = {
         name: currentAgent.value.name,
         description: currentAgent.value.description,
         providerId: currentAgent.value.providerId,
-        modelId: currentAgent.value.modelId,
+        modelId: '',
         temperature: currentAgent.value.temperature,
         systemPrompt: currentAgent.value.systemPrompt,
         botType: currentAgent.value.botType,
@@ -94,6 +94,10 @@ onMounted(async () => {
         enableRAG: currentAgent.value.enableRAG,
         embeddingModelName: currentAgent.value.embeddingModelName || '',
       }
+
+      await loadModelsForProvider(currentAgent.value.providerId)
+      await nextTick()
+      form.value.modelId = currentAgent.value.modelId
     }
   }
 
@@ -130,15 +134,13 @@ function applyModelDefaults(modelId: string) {
 watch(
   () => form.value.providerId,
   async (providerId, previousProviderId) => {
-    if (providerId === previousProviderId) return
+    if (providerId === previousProviderId || isInitializing.value) return
 
-    if (!isInitializing.value) {
-      form.value.modelId = ''
-      clearModelsByProvider()
-    }
+    form.value.modelId = ''
+    clearModelsByProvider()
 
     await loadModelsForProvider(providerId)
-  }
+  },
 )
 
 watch(
@@ -146,13 +148,13 @@ watch(
   (modelId) => {
     if (!modelId) return
     applyModelDefaults(modelId)
-  }
+  },
 )
 
 async function handleSubmit() {
   const result = validateSchema(schema.value, form.value)
   if (!result.success) {
-    Object.keys(form.value).forEach(key => touched.value[key] = true)
+    Object.keys(form.value).forEach((key) => (touched.value[key] = true))
     return
   }
 
@@ -206,7 +208,10 @@ async function handleSubmit() {
               <v-text-field
                 v-model="form.name"
                 label="Name"
-                :error-messages="getFieldError(fieldErrors, 'name') || (touched.name && !form.name ? ['Name is required'] : [])"
+                :error-messages="
+                  getFieldError(fieldErrors, 'name') ||
+                  (touched.name && !form.name ? ['Name is required'] : [])
+                "
                 @blur="touch('name')"
               />
             </v-col>
@@ -223,6 +228,7 @@ async function handleSubmit() {
             </v-col>
             <v-col cols="12" md="6">
               <v-select
+                :key="modelSelectKey"
                 v-model="form.modelId"
                 :items="modelOptions"
                 item-title="title"
@@ -234,11 +240,7 @@ async function handleSubmit() {
               />
             </v-col>
             <v-col cols="12" md="6">
-              <v-select
-                v-model.number="form.botType"
-                :items="botTypes"
-                label="Bot Type"
-              />
+              <v-select v-model.number="form.botType" :items="botTypes" label="Bot Type" />
             </v-col>
             <v-col cols="12">
               <v-textarea
@@ -269,18 +271,10 @@ async function handleSubmit() {
               />
             </v-col>
             <v-col cols="12" md="4">
-              <v-text-field
-                v-model.number="form.topK"
-                label="Top K"
-                type="number"
-              />
+              <v-text-field v-model.number="form.topK" label="Top K" type="number" />
             </v-col>
             <v-col cols="12" md="4">
-              <v-text-field
-                v-model.number="form.maxTokens"
-                label="Max Tokens"
-                type="number"
-              />
+              <v-text-field v-model.number="form.maxTokens" label="Max Tokens" type="number" />
             </v-col>
             <v-col cols="12" md="4">
               <v-text-field
@@ -296,10 +290,7 @@ async function handleSubmit() {
               <v-switch v-model="form.enableRAG" label="Enable RAG" color="primary" />
             </v-col>
             <v-col cols="12">
-              <v-text-field
-                v-model="form.embeddingModelName"
-                label="Embedding Model Name"
-              />
+              <v-text-field v-model="form.embeddingModelName" label="Embedding Model Name" />
             </v-col>
           </v-row>
           <v-btn type="submit" color="primary" :loading="saving">

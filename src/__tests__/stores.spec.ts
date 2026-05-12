@@ -531,9 +531,8 @@ describe('stores', () => {
 
     it('sends message and updates current session', async () => {
       const store = useSessionsStore()
-      // The store checks if currentSession.sessionId === data.agentId (which seems like a bug, but we test actual behavior)
       store.currentSession = {
-        sessionId: 'a1', // This matches the agentId in the request
+        sessionId: '1',
         agentId: 'a1',
         agentName: 'Agent',
         title: 'Session',
@@ -544,8 +543,13 @@ describe('stores', () => {
       }
 
       const mockResponse = {
+        sessionId: '1',
+        userId: 'u1',
+        userMessage: 'Hello',
         aiResponse: 'Hello user!',
+        content: 'Hello user!',
         timestamp: '2024-01-01T10:00:00Z',
+        toolCalls: [],
       }
 
       vi.mocked(agenticApi.agenticApi.sendMessage).mockResolvedValue(mockResponse)
@@ -554,7 +558,6 @@ describe('stores', () => {
 
       expect(agenticApi.agenticApi.sendMessage).toHaveBeenCalled()
       expect(result).toEqual(mockResponse)
-      // Messages should be added to current session based on sessionId === agentId check
       expect(store.currentSession?.messages).toHaveLength(2) // User message + AI response
     })
 
@@ -572,16 +575,21 @@ describe('stores', () => {
       }
 
       const mockResponse = {
+        sessionId: '2',
+        userId: 'u1',
+        userMessage: 'Hello',
         aiResponse: 'Hello user!',
+        content: 'Hello user!',
         timestamp: '2024-01-01T10:00:00Z',
+        toolCalls: [],
       }
 
       vi.mocked(agenticApi.agenticApi.sendMessage).mockResolvedValue(mockResponse)
 
-      const result = await store.sendMessage({ agentId: 'a2', message: 'Hello', sessionId: '1' })
+      const result = await store.sendMessage({ agentId: 'a2', message: 'Hello' })
 
       expect(result).toEqual(mockResponse)
-      // Messages should NOT be added because sessionId doesn't match agentId
+      // Messages should NOT be added because the active session does not match the target session
       expect(store.currentSession?.messages).toHaveLength(0)
     })
 

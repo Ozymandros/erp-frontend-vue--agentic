@@ -77,16 +77,16 @@ async function handleDelete() {
         :items-per-page="10"
       >
         <template #[`item.status`]="{ value }">
-          <v-chip :color="getStatusColor(value.status)" size="small">
-            {{ getStatusName(value.status) }}
+          <v-chip :color="getStatusColor(value)" size="small">
+            {{ getStatusName(value) }}
           </v-chip>
         </template>
         <template #[`item.startedAt`]="{ value }">
           {{ formatDate(value) }}
         </template>
-        <template #[`item.actions`]="{ value }">
-          <v-btn icon="mdi-chat" size="small" variant="text" :to="`/sessions/${value.sessionId}`" />
-          <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="confirmDelete(value.sessionId)" />
+        <template #[`item.actions`]="{ item }">
+          <v-btn icon="mdi-chat" size="small" variant="text" :to="`/sessions/${item.sessionId}`" />
+          <v-btn icon="mdi-delete" size="small" variant="text" color="error" @click="confirmDelete(item.sessionId)" />
         </template>
       </v-data-table>
     </v-card>
