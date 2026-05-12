@@ -6,7 +6,7 @@ import { useAgents } from '@/composables/useAgents'
 
 const route = useRoute()
 const router = useRouter()
-const { currentSession, sendingMessage, loading: sessionLoading, error: chatError, sendMessage, loadSession, createSession } = useChat()
+const { currentSession, sendingMessage, loading: sessionLoading, error: chatError, sendMessage, loadSession, createSession, clearSession } = useChat()
 const { agents, fetchAgents } = useAgents()
 
 const sttError = ref('')
@@ -60,7 +60,7 @@ let recognition: SpeechRecognition | null = null
 
 onMounted(async () => {
   await fetchAgents()
-  
+
   // Initialize Speech Recognition
   const speechWindow = window as WindowWithSpeechRecognition
   const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition
@@ -113,22 +113,20 @@ onMounted(async () => {
     recognition = rec
   }
 
-  if (sessionId.value) {
-    await loadSession(sessionId.value)
-    if (currentSession.value) {
-      selectedAgentId.value = currentSession.value.agentId
-      messageList.value = [...currentSession.value.messages]
-      await scrollToBottom()
-    }
-  }
 })
 
 watch(() => currentSession.value?.messages, (newMessages) => {
   if (newMessages) {
     messageList.value = [...newMessages]
     nextTick(scrollToBottom)
+  } else {
+    messageList.value = []
   }
 }, { deep: true })
+
+watch(sessionId, async (newSessionId) => {
+  await syncRouteSession(newSessionId)
+}, { immediate: true })
 
 function scrollToBottom() {
   if (messagesContainer.value) {
@@ -138,6 +136,29 @@ function scrollToBottom() {
 
 function formatTime(timestamp: string): string {
   return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+}
+
+async function syncRouteSession(newSessionId?: string) {
+  messageInput.value = ''
+  sttError.value = ''
+  clearSession()
+  selectedAgentId.value = ''
+  messageList.value = []
+
+  if (!newSessionId) {
+    showAgentSelect.value = true
+    return
+  }
+
+  showAgentSelect.value = false
+  await loadSession(newSessionId)
+
+  if (currentSession.value) {
+    selectedAgentId.value = currentSession.value.agentId
+    messageList.value = [...currentSession.value.messages]
+    await nextTick()
+    scrollToBottom()
+  }
 }
 
 async function handleSend() {

@@ -1,0 +1,124 @@
+import { flushPromises, mount } from '@vue/test-utils'
+import { ref } from 'vue'
+import { createMemoryHistory, createRouter } from 'vue-router'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+function createSessionDetails(sessionId: string) {
+  return {
+    sessionId,
+    agentId: 'agent-1',
+    agentName: 'Support Agent',
+    botType: 1,
+    userId: 'user-1',
+    title: 'Existing Session',
+    startedAt: '2026-05-12T12:00:00Z',
+    lastMessageAt: '2026-05-12T12:01:00Z',
+    status: 1,
+    messages: [
+      {
+        id: 'message-1',
+        role: 'assistant',
+        content: `Message for ${sessionId}`,
+        timestamp: '2026-05-12T12:01:00Z',
+      },
+    ],
+  }
+}
+
+describe('ChatPage', () => {
+  beforeEach(() => {
+    vi.resetModules()
+    vi.clearAllMocks()
+  })
+
+  it('clears the active session when navigating to the new chat route', async () => {
+    const currentSession = ref(createSessionDetails('session-1'))
+    const sendingMessage = ref(false)
+    const loading = ref(false)
+    const error = ref<string | null>(null)
+    const sendMessage = vi.fn()
+    const loadSession = vi.fn(async (sessionId: string) => {
+      currentSession.value = createSessionDetails(sessionId)
+    })
+    const createSession = vi.fn()
+    const clearSession = vi.fn(() => {
+      currentSession.value = null
+    })
+    const agents = ref([
+      {
+        id: 'agent-1',
+        name: 'Support Agent',
+        description: 'General support',
+      },
+    ])
+    const fetchAgents = vi.fn()
+
+    vi.doMock('@/composables/useSessions', () => ({
+      useChat: () => ({
+        currentSession,
+        sendingMessage,
+        loading,
+        error,
+        sendMessage,
+        loadSession,
+        createSession,
+        clearSession,
+      }),
+    }))
+
+    vi.doMock('@/composables/useAgents', () => ({
+      useAgents: () => ({
+        agents,
+        fetchAgents,
+      }),
+    }))
+
+    const ChatPage = (await import('../pages/ChatPage.vue')).default
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/sessions/new', component: ChatPage },
+        { path: '/sessions/:id', component: ChatPage },
+      ],
+    })
+
+    await router.push('/sessions/session-1')
+    await router.isReady()
+
+    const wrapper = mount(ChatPage, {
+      global: {
+        plugins: [router],
+        renderStubDefaultSlot: true,
+        stubs: {
+          'v-btn': true,
+          'v-icon': true,
+          'v-card': true,
+          'v-card-title': true,
+          'v-card-text': true,
+          'v-avatar': true,
+          'v-divider': true,
+          'v-text-field': true,
+          'v-progress-circular': true,
+          'v-dialog': true,
+          'v-list': true,
+          'v-list-item': true,
+          'v-list-item-title': true,
+          'v-list-item-subtitle': true,
+          'v-snackbar': true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(loadSession).toHaveBeenCalledWith('session-1')
+    expect(wrapper.text()).toContain('Message for session-1')
+
+    await router.push('/sessions/new')
+    await flushPromises()
+
+    expect(clearSession).toHaveBeenCalled()
+    expect(wrapper.text()).not.toContain('Message for session-1')
+    expect(wrapper.text()).toContain('Start a conversation')
+  })
+})
