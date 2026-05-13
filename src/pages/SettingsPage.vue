@@ -47,7 +47,6 @@ function handleLogout() {
               true-value="dark"
               false-value="light"
               color="primary"
-              @update:model-value="uiStore.toggleTheme"
             />
             <v-select
               v-model="uiStore.currentLocale"

@@ -17,7 +17,14 @@ export default createVuetify({
     defaultTheme: 'light',
     themes: {
       light: {
+        dark: false,
         colors: {
+          background: '#f5f5f5',
+          surface: '#ffffff',
+          'surface-variant': '#eeeeee',
+          'on-background': '#212121',
+          'on-surface': '#212121',
+          'on-surface-variant': '#212121',
           primary: '#1976D2',
           secondary: '#424242',
           accent: '#82B1FF',
@@ -28,7 +35,14 @@ export default createVuetify({
         },
       },
       dark: {
+        dark: true,
         colors: {
+          background: '#121212',
+          surface: '#1e1e1e',
+          'surface-variant': '#2a2a2a',
+          'on-background': '#e0e0e0',
+          'on-surface': '#e0e0e0',
+          'on-surface-variant': '#e0e0e0',
           primary: '#2196F3',
           secondary: '#424242',
           accent: '#82B1FF',

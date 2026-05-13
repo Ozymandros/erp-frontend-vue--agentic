@@ -38,7 +38,7 @@ function navigateTo(path?: string) {
 
 <template>
   <v-layout>
-    <v-app-bar elevation="1" color="white">
+    <v-app-bar elevation="0" color="surface" border>
       <v-app-bar-nav-icon @click="uiStore.toggleSidebar" />
       <v-app-bar-title>Agentic Dashboard</v-app-bar-title>
       <v-spacer />
@@ -62,7 +62,8 @@ function navigateTo(path?: string) {
       v-model="drawerOpen"
       :rail="isMini"
       :permanent="!$vuetify.display.mobile"
-      color="grey-lighten-5"
+      color="surface-variant"
+      border
     >
       <v-list density="compact" nav>
         <template v-for="(item, i) in menuConfig" :key="i">
@@ -100,7 +101,7 @@ function navigateTo(path?: string) {
       </template>
     </v-navigation-drawer>
 
-    <v-main>
+    <v-main class="bg-background">
       <v-container fluid class="pa-4">
         <router-view />
       </v-container>

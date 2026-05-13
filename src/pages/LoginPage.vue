@@ -44,8 +44,7 @@ async function handleLogin() {
 </script>
 
 <template>
-  <v-app>
-    <v-main class="bg-grey-lighten-4">
+  <v-main class="bg-background">
       <v-container class="fill-height" fluid>
         <v-row align="center" justify="center">
           <v-col cols="12" sm="8" md="4">
@@ -102,5 +101,4 @@ async function handleLogin() {
         </v-row>
       </v-container>
     </v-main>
-  </v-app>
 </template>
