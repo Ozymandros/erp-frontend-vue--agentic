@@ -3,6 +3,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useChat } from '@/composables/useSessions'
 import { useAgents } from '@/composables/useAgents'
+import ChatMessageContent from '@/components/ChatMessageContent.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -266,7 +267,7 @@ function toggleSpeechToText() {
           :class="{ 'message-user': message.role === 'user', 'message-assistant': message.role === 'assistant' }"
         >
           <div class="message-content pa-3 rounded-lg">
-            {{ message.content }}
+            <ChatMessageContent :content="message.content" :role="message.role" />
           </div>
           <div class="message-time text-caption text-grey mt-1">
             {{ formatTime(message.timestamp) }}

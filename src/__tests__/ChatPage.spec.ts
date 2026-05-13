@@ -121,4 +121,86 @@ describe('ChatPage', () => {
     expect(wrapper.text()).not.toContain('Message for session-1')
     expect(wrapper.text()).toContain('Start a conversation')
   })
+
+  it('renders assistant markdown code fences in the message list', async () => {
+    const currentSession = ref({
+      ...createSessionDetails('session-2'),
+      messages: [
+        {
+          id: 'message-md',
+          role: 'assistant',
+          content: '```js\nconst answer = 42\n```',
+          timestamp: '2026-05-12T12:02:00Z',
+        },
+      ],
+    })
+    const sendingMessage = ref(false)
+    const loading = ref(false)
+    const error = ref<string | null>(null)
+    const sendMessage = vi.fn()
+    const loadSession = vi.fn()
+    const createSession = vi.fn()
+    const clearSession = vi.fn()
+    const agents = ref([{ id: 'agent-1', name: 'Support Agent', description: 'General support' }])
+    const fetchAgents = vi.fn()
+
+    vi.doMock('@/composables/useSessions', () => ({
+      useChat: () => ({
+        currentSession,
+        sendingMessage,
+        loading,
+        error,
+        sendMessage,
+        loadSession,
+        createSession,
+        clearSession,
+      }),
+    }))
+
+    vi.doMock('@/composables/useAgents', () => ({
+      useAgents: () => ({
+        agents,
+        fetchAgents,
+      }),
+    }))
+
+    const ChatPage = (await import('../pages/ChatPage.vue')).default
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [{ path: '/sessions/:id', component: ChatPage }],
+    })
+
+    await router.push('/sessions/session-2')
+    await router.isReady()
+
+    const wrapper = mount(ChatPage, {
+      global: {
+        plugins: [router],
+        renderStubDefaultSlot: true,
+        stubs: {
+          'v-btn': true,
+          'v-icon': true,
+          'v-card': true,
+          'v-card-title': true,
+          'v-card-text': true,
+          'v-avatar': true,
+          'v-divider': true,
+          'v-text-field': true,
+          'v-progress-circular': true,
+          'v-dialog': true,
+          'v-list': true,
+          'v-list-item': true,
+          'v-list-item-title': true,
+          'v-list-item-subtitle': true,
+          'v-snackbar': true,
+        },
+      },
+    })
+
+    await flushPromises()
+
+    expect(wrapper.html()).toContain('<pre>')
+    expect(wrapper.html()).toContain('<code>')
+    expect(wrapper.text()).toContain('const answer = 42')
+  })
 })
