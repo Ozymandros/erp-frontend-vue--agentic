@@ -1,17 +1,29 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, provide, watch, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useChat } from '@/composables/useSessions'
 import { useAgents } from '@/composables/useAgents'
+import { useSpeechRecognition } from '@/composables/useSpeechRecognition'
+import { useSpeechSynthesis } from '@/composables/useSpeechSynthesis'
+import { speechSynthesisKey } from '@/composables/speechKeys'
 import ChatMessageContent from '@/components/ChatMessageContent.vue'
+import MessageSpeechControls from '@/components/MessageSpeechControls.vue'
+import { markdownToPlainText } from '@/utils/markdownToPlainText'
+
+const AUTO_READ_STORAGE_KEY = 'chat:autoReadResponses'
 
 const route = useRoute()
 const router = useRouter()
 const { currentSession, sendingMessage, loading: sessionLoading, error: chatError, sendMessage, loadSession, createSession, clearSession } = useChat()
 const { agents, fetchAgents } = useAgents()
 
+const speech = useSpeechSynthesis()
+provide(speechSynthesisKey, speech)
+
 const sttError = ref('')
-const error = computed(() => chatError.value || sttError.value)
+const ttsError = ref('')
+const speechStatus = ref('')
+const error = computed(() => chatError.value || sttError.value || ttsError.value)
 
 const sessionId = computed(() => route.params.id as string | undefined)
 const messageInput = ref('')
@@ -20,100 +32,42 @@ const messageList = ref<{ id: string; role: string; content: string; timestamp: 
 
 const selectedAgentId = ref<string>('')
 const showAgentSelect = ref(false)
+const autoReadResponses = ref(false)
+const lastAutoReadMessageId = ref<string | null>(null)
+const skipAutoReadForLoadedHistory = ref(true)
+const knownMessageIds = ref<Set<string>>(new Set())
 
-interface SpeechRecognitionEvent extends Event {
-  results: {
-    [key: number]: {
-      [key: number]: {
-        transcript: string
-      }
-    }
+const {
+  isSupported: isSpeechSupported,
+  isListening,
+  error: recognitionError,
+  toggle: toggleSpeechToText,
+  stop: stopSpeechRecognition,
+} = useSpeechRecognition((transcript) => {
+  messageInput.value = (messageInput.value + ' ' + transcript).trim()
+})
+
+watch(recognitionError, (value) => {
+  sttError.value = value ?? ''
+})
+
+watch(() => speech.error.value, (value) => {
+  if (value) {
+    ttsError.value = value
   }
-}
+})
 
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean
-  interimResults: boolean
-  lang: string
-  onstart: () => void
-  onresult: (event: SpeechRecognitionEvent) => void
-  onerror: (event: SpeechRecognitionErrorEvent) => void
-  onend: () => void
-  start: () => void
-  stop: () => void
-}
-
-type SpeechRecognitionConstructor = new () => SpeechRecognition
-
-interface WindowWithSpeechRecognition extends Window {
-  SpeechRecognition?: SpeechRecognitionConstructor
-  webkitSpeechRecognition?: SpeechRecognitionConstructor
-}
-
-// Speech to Text state
-const isListening = ref(false)
-const isSpeechSupported = ref(false)
-let recognition: SpeechRecognition | null = null
+watch(() => speech.speakingMessageId.value, (messageId) => {
+  speechStatus.value = messageId ? 'Reading assistant message aloud.' : ''
+})
 
 onMounted(async () => {
+  autoReadResponses.value = sessionStorage.getItem(AUTO_READ_STORAGE_KEY) === 'true'
   await fetchAgents()
+})
 
-  // Initialize Speech Recognition
-  const speechWindow = window as WindowWithSpeechRecognition
-  const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition
-  if (SpeechRecognition) {
-    isSpeechSupported.value = true
-    const rec = new SpeechRecognition() as SpeechRecognition
-    rec.continuous = false
-    rec.interimResults = false
-    rec.lang = navigator.language || 'en-US'
-
-    rec.onstart = () => {
-      console.log('Speech recognition started')
-      isListening.value = true
-      sttError.value = ''
-    }
-
-    rec.onresult = (event: SpeechRecognitionEvent) => {
-      console.log('Speech recognition result event received', event)
-      
-      let transcript = ''
-      if (event.results && event.results[0] && event.results[0][0]) {
-        transcript = event.results[0][0].transcript
-      }
-
-      console.log('Transcribed text:', transcript)
-      if (transcript) {
-        messageInput.value = (messageInput.value + ' ' + transcript).trim()
-      } else {
-        console.warn('Transcript was empty')
-      }
-    }
-
-    rec.onerror = (event: SpeechRecognitionErrorEvent) => {
-      console.error('Speech recognition error:', event.error)
-      if (event.error === 'no-speech') {
-        sttError.value = 'No speech was detected. Please try again.'
-      } else if (event.error === 'not-allowed') {
-        sttError.value = 'Microphone access denied. Please check permissions.'
-      } else {
-        sttError.value = `Speech error: ${event.error}`
-      }
-      isListening.value = false
-    }
-
-    rec.onend = () => {
-      console.log('Speech recognition ended')
-      isListening.value = false
-    }
-    
-    recognition = rec
-  }
-
+watch(autoReadResponses, (enabled) => {
+  sessionStorage.setItem(AUTO_READ_STORAGE_KEY, String(enabled))
 })
 
 watch(() => currentSession.value?.messages, (newMessages) => {
@@ -123,6 +77,34 @@ watch(() => currentSession.value?.messages, (newMessages) => {
   } else {
     messageList.value = []
   }
+}, { deep: true })
+
+watch(messageList, async (messages) => {
+  if (skipAutoReadForLoadedHistory.value) {
+    knownMessageIds.value = new Set(messages.map((message) => message.id))
+    return
+  }
+
+  if (!autoReadResponses.value) {
+    knownMessageIds.value = new Set(messages.map((message) => message.id))
+    return
+  }
+
+  const newAssistantMessages = messages.filter(
+    (message) =>
+      message.role === 'assistant'
+      && !knownMessageIds.value.has(message.id)
+      && message.id !== lastAutoReadMessageId.value
+  )
+
+  knownMessageIds.value = new Set(messages.map((message) => message.id))
+
+  const latestAssistantMessage = newAssistantMessages.at(-1)
+  if (!latestAssistantMessage) {
+    return
+  }
+
+  await speakAssistantMessage(latestAssistantMessage.id, latestAssistantMessage.content, true)
 }, { deep: true })
 
 watch(sessionId, async (newSessionId) => {
@@ -142,9 +124,15 @@ function formatTime(timestamp: string): string {
 async function syncRouteSession(newSessionId?: string) {
   messageInput.value = ''
   sttError.value = ''
+  ttsError.value = ''
+  speech.stop()
+  stopSpeechRecognition()
   clearSession()
   selectedAgentId.value = ''
   messageList.value = []
+  lastAutoReadMessageId.value = null
+  skipAutoReadForLoadedHistory.value = true
+  knownMessageIds.value = new Set()
 
   if (!newSessionId) {
     showAgentSelect.value = true
@@ -157,13 +145,47 @@ async function syncRouteSession(newSessionId?: string) {
   if (currentSession.value) {
     selectedAgentId.value = currentSession.value.agentId
     messageList.value = [...currentSession.value.messages]
+    knownMessageIds.value = new Set(messageList.value.map((message) => message.id))
     await nextTick()
     scrollToBottom()
+    skipAutoReadForLoadedHistory.value = false
   }
+}
+
+async function speakAssistantMessage(messageId: string, content: string, isAutoRead = false) {
+  stopSpeechRecognition()
+  speech.stop()
+  ttsError.value = ''
+
+  const speakableText = markdownToPlainText(content)
+  if (!speakableText) {
+    if (!isAutoRead) {
+      ttsError.value = 'There is no readable text in this message.'
+    }
+    return
+  }
+
+  const started = await speech.speak(messageId, speakableText)
+  if (started) {
+    lastAutoReadMessageId.value = messageId
+  }
+}
+
+function handleBeforeSpeak() {
+  stopSpeechRecognition()
+  speech.stop()
+  ttsError.value = ''
+}
+
+function handleSpeakError(message: string) {
+  ttsError.value = message
 }
 
 async function handleSend() {
   if (!messageInput.value.trim()) return
+
+  speech.stop()
+  stopSpeechRecognition()
 
   const userMessage = messageInput.value
   messageInput.value = ''
@@ -187,6 +209,8 @@ async function handleSend() {
 }
 
 function startNewChat() {
+  speech.stop()
+  stopSpeechRecognition()
   selectedAgentId.value = ''
   messageInput.value = ''
   messageList.value = []
@@ -207,44 +231,47 @@ async function selectAgent(agentId: string) {
     if (currentSession.value) {
       selectedAgentId.value = currentSession.value.agentId
       messageList.value = [...currentSession.value.messages]
+      knownMessageIds.value = new Set(messageList.value.map((message) => message.id))
+      skipAutoReadForLoadedHistory.value = false
     }
   } catch {
     // Error is surfaced via store/computed error snackbar
   }
 }
 
-function toggleSpeechToText() {
-  if (!isSpeechSupported.value || !recognition) {
-    sttError.value = 'Speech recognition is not supported in this browser.'
+function handleToggleSpeechToText() {
+  if (isListening.value) {
+    stopSpeechRecognition()
     return
   }
 
-  if (isListening.value) {
-    console.log('Stopping speech recognition...')
-    recognition.stop()
-  } else {
-    try {
-      console.log('Starting speech recognition...')
-      recognition.start()
-    } catch (err) {
-      console.error('Failed to start recognition:', err)
-      isListening.value = false
-      sttError.value = 'Could not start microphone. It might already be in use.'
-    }
-  }
+  speech.stop()
+  toggleSpeechToText()
 }
 </script>
 
 <template>
   <div class="chat-container d-flex flex-column" style="height: calc(100vh - 100px)">
-    <div class="d-flex justify-space-between align-center mb-2">
+    <div class="d-flex justify-space-between align-center mb-2 flex-wrap ga-2">
       <h1 class="text-h4">
         {{ currentSession?.title || currentSession?.agentName || 'New Chat' }}
       </h1>
-      <v-btn v-if="!sessionId" color="primary" variant="tonal" @click="startNewChat">
-        <v-icon icon="mdi-plus" start />New Chat
-      </v-btn>
+      <div class="d-flex align-center ga-3">
+        <v-switch
+          v-if="speech.isSupported.value"
+          v-model="autoReadResponses"
+          label="Auto-read responses"
+          density="compact"
+          hide-details
+          inset
+        />
+        <v-btn v-if="!sessionId" color="primary" variant="tonal" @click="startNewChat">
+          <v-icon icon="mdi-plus" start />New Chat
+        </v-btn>
+      </div>
     </div>
+
+    <span class="sr-only" aria-live="polite">{{ speechStatus }}</span>
 
     <v-card class="flex-grow-1 d-flex flex-column">
       <v-card-title v-if="selectedAgentId || currentSession" class="d-flex align-center py-2">
@@ -269,8 +296,17 @@ function toggleSpeechToText() {
           <div class="message-content pa-3 rounded-lg">
             <ChatMessageContent :content="message.content" :role="message.role" />
           </div>
-          <div class="message-time text-caption text-grey mt-1">
-            {{ formatTime(message.timestamp) }}
+          <div class="message-meta d-flex align-center ga-1 mt-1">
+            <div class="message-time text-caption text-grey">
+              {{ formatTime(message.timestamp) }}
+            </div>
+            <MessageSpeechControls
+              :message-id="message.id"
+              :content="message.content"
+              :role="message.role"
+              @before-speak="handleBeforeSpeak"
+              @speak-error="handleSpeakError"
+            />
           </div>
         </div>
 
@@ -302,13 +338,16 @@ function toggleSpeechToText() {
                 :color="isListening ? 'error' : 'primary'"
                 :disabled="sendingMessage || sessionLoading || (!selectedAgentId && !currentSession)"
                 class="mr-1"
-                @click="toggleSpeechToText"
+                :aria-label="isListening ? 'Stop voice input' : 'Start voice input'"
+                :aria-pressed="isListening"
+                @click="handleToggleSpeechToText"
               />
               <v-btn
                 icon="mdi-send"
                 variant="text"
                 color="primary"
                 :disabled="!messageInput.trim() || sendingMessage || sessionLoading"
+                aria-label="Send message"
                 @click="handleSend"
               />
             </template>
@@ -366,6 +405,22 @@ function toggleSpeechToText() {
 .message-assistant .message-content {
   background: #e0e0e0;
   color: black;
+}
+
+.message-meta {
+  min-height: 28px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .dark .messages-area {
